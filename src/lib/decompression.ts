@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import httpClient from "../utils/http";
 import { GET_GRADING_POLICY, UPDATE_DECOMPRESSION_RESULT_FOR_SUBMISSION } from "../utils/queries";
 
-const mountPath = process.env.NODE_ENV==='production'?process.env.SHARED_MOUNT_PATH:'/home/system/workspace'
+const mountPath = process.env.SHARED_MOUNT_PATH || "/home/system/workspace";
 
 export async function decompressSubmission(submission: any) {
   try {
