@@ -23,8 +23,7 @@ const postalService = nodemailer.createTransport(smtpTransport({
   }
 }))
 
-const dev = process.env.NODE_ENV !== 'production';
-if (dev) {
+if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
   console.log('[!] Loading Env File');
 }
@@ -154,35 +153,33 @@ const port = process.env.WEBHOOK_PORT || 4000;
       }
     });
 
-    if (dev) {
-      /**
-       * Mocked `/identity` endpoint to authenticate Hasura requests. It directly
-       * reads the cookie and returns Hasura payload without actual validation.
-       * Used for local development only when trying to bypass OAuth.
-       */
-      server.post(`/identity-mock`, async (req, res) => {
-        const headers = req.body.headers;
-        const cookie = headers?.cookie ?? headers?.Cookie;
-        if (typeof cookie !== "string") {
-          res.status(400).send("Unauthorized - cookie is not a string");
-          return;
-        }
+    /**
+     * Mocked `/identity` endpoint to authenticate Hasura requests. It directly
+     * reads the cookie and returns Hasura payload without actual validation.
+     * Used for local development only when trying to bypass OAuth.
+     */
+    server.post(`/identity-mock`, async (req, res) => {
+      const headers = req.body.headers;
+      const cookie = headers?.cookie ?? headers?.Cookie;
+      if (typeof cookie !== "string") {
+        res.status(400).send("Unauthorized - cookie is not a string");
+        return;
+      }
 
-        const { itsc } = parse(cookie);
-        const dummyName = "FOO, bar";
+      const { itsc } = parse(cookie);
+      const dummyName = "FOO, bar";
 
-        const { isAdmin, courses } = await getUser(itsc, dummyName);
-        const allowedCourses = `{${courses.map(({ course_id }: any) => course_id).join(",")}}`;
+      const { isAdmin, courses } = await getUser(itsc, dummyName);
+      const allowedCourses = `{${courses.map(({ course_id }: any) => course_id).join(",")}}`;
 
-        const payload = {
-          "X-Hasura-User-Id": itsc,
-          "X-Hasura-Role": isAdmin ? "admin" : "user",
-          ...(!isAdmin && { "X-Hasura-Allowed-Courses": allowedCourses }),
-          "X-Hasura-Requested-At": new Date().toISOString(),
-        };
-        res.json(payload);
-      });
-    }
+      const payload = {
+        "X-Hasura-User-Id": itsc,
+        "X-Hasura-Role": isAdmin ? "admin" : "user",
+        ...(!isAdmin && { "X-Hasura-Allowed-Courses": allowedCourses }),
+        "X-Hasura-Requested-At": new Date().toISOString(),
+      };
+      res.json(payload);
+    });
 
     /**
      * Synchronizes the list of student enrollments from the CS System.
