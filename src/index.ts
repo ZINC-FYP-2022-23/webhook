@@ -23,10 +23,8 @@ const postalService = nodemailer.createTransport(smtpTransport({
   }
 }))
 
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-  console.log('[!] Loading Env File');
-}
+dotenv.config();
+console.log('[!] Loading Env File');
 
 import { verifySignature, getUser } from "./lib/user";
 import { SyncEnrollment } from "./lib/course";
