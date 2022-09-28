@@ -118,3 +118,4 @@ dist
 
 service-account.json
 .DS_Store
+.vscode
