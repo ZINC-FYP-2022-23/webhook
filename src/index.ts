@@ -109,6 +109,10 @@ const port = process.env.WEBHOOK_PORT || 4000;
     //     return result;
     // }
 
+    /**
+     * Authenticate requests to the Hasura GraphQL server.
+     * Read more: https://hasura.io/docs/latest/auth/authentication/webhook/
+     */
     server.post(`/identity`, async (req, res) => {
       try {
         if(typeof req.body.headers.Cookie !== "string") {
@@ -180,6 +184,9 @@ const port = process.env.WEBHOOK_PORT || 4000;
       });
     }
 
+    /**
+     * Synchronizes the list of student enrollments from the CS System.
+     */
     server.post(`/trigger/syncEnrollment`, async (req, res) => {
       try {
         await SyncEnrollment();
@@ -195,6 +202,10 @@ const port = process.env.WEBHOOK_PORT || 4000;
       }
     });
 
+    /**
+     * Decompresses the ZIP submission and push a `gradingTask` job to Redis for
+     * the grader to process.
+     */
     server.post(`/trigger/decompression`, async (req, res) => {
       try {
         const { event: { data } } = req.body;
@@ -237,6 +248,10 @@ const port = process.env.WEBHOOK_PORT || 4000;
         });
       }
     });
+
+    /**
+     * Process the generated grading report.
+     */
     server.post(`/trigger/postGradingProcessing`, async (req, res) => {
       try {
         const { data } = req.body.event;

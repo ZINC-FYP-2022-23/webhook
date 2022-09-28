@@ -49,6 +49,9 @@ function extractRAR(submission: any) {
   }
 }
 
+/**
+ * Extract ZIP to `${mountPath}/extracted/${submission.id}`.
+ */
 async function extractZip(submission: any) {
   try {
     const file = `${mountPath}/${submission.stored_name}`;
