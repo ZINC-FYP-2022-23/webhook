@@ -1,0 +1,14 @@
+FROM node:lts-alpine as base
+ENV PORT=80
+
+# Install dependencies
+RUN set -ex && \
+    apk add --no-cache --virtual unrar curl unzip
+
+WORKDIR /usr/src/app
+
+COPY package.json yarn.lock ./
+RUN yarn install
+COPY . .
+EXPOSE 4000
+CMD ["yarn", "dev"]
