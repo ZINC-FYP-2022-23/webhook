@@ -152,21 +152,24 @@ const port = process.env.WEBHOOK_PORT || 4000;
     });
 
     /**
-     * Mocked `/identity` endpoint to authenticate Hasura requests. It directly
-     * reads the cookie and returns Hasura payload without actual validation.
-     * Used for local development only when trying to bypass OAuth.
+     * Mocked `/identity` endpoint to authenticate Hasura requests. If the cookie is missing from the
+     * header, it logs in a TA user of ITSC `~teacher`.
+     * 
+     * TODO: Delete me!!!!!! This is only for FYP development purposes.
      */
     server.post(`/identity-mock`, async (req, res) => {
+      let itsc: string;
+
       const headers = req.body.headers;
       const cookie = headers?.cookie ?? headers?.Cookie;
       if (typeof cookie !== "string") {
-        res.status(400).send("Unauthorized - cookie is not a string");
-        return;
+        console.warn("[!] Cookie is not a string. Now logging in as ~teacher.")
+        itsc = "~teacher";
+      } else {
+        itsc = parse(cookie).itsc;
       }
 
-      const { itsc } = parse(cookie);
       const dummyName = "FOO, bar";
-
       const { isAdmin, courses } = await getUser(itsc, dummyName);
       const allowedCourses = `{${courses.map(({ course_id }: any) => course_id).join(",")}}`;
 
