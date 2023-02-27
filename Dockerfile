@@ -9,7 +9,7 @@ RUN yarn build
 FROM node:lts-alpine
 ENV PORT=80
 RUN set -ex && \
-    apk add --no-cache --virtual unrar curl unzip
+    apk add --no-cache --virtual unrar curl unzip git
 WORKDIR /usr/src/app
 # Copy the compiled code from the builder image. This way we don't need to install TypeScript (and other dev dependencies)
 # in the final image, which reduces the image size.

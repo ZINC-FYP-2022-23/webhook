@@ -3,7 +3,7 @@ ENV PORT=80
 
 # Install dependencies
 RUN set -ex && \
-    apk add --no-cache --virtual unrar curl unzip
+    apk add --no-cache --virtual unrar curl unzip git
 
 WORKDIR /usr/src/app
 

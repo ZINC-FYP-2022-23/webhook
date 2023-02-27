@@ -9,6 +9,8 @@ import * as dotenv from 'dotenv';
 // import * as admin from 'firebase-admin';
 import crypto from "crypto";
 import redis from "./utils/redis";
+import { existsSync } from "fs";
+import { exec } from "child_process";
 
 // admin.initializeApp({
 //   credential: admin.credential.applicationDefault()
@@ -180,6 +182,48 @@ const port = process.env.WEBHOOK_PORT || 4000;
         "X-Hasura-Requested-At": new Date().toISOString(),
       };
       res.json(payload);
+    });
+
+    /**
+     * Compares two assignment submissions by running `git diff` on them.
+     */
+    server.get(`/diffSubmissions`, async (req, res) => {
+      const { oldId, newId } = req.query;
+
+      if (
+        (typeof oldId !== "string" && typeof oldId !== "number") ||
+        (typeof newId !== "string" && typeof newId !== "number")
+      ) {
+        res.status(400).json({ diff: "", error: "Invalid submission IDs." });
+        return;
+      }
+
+      const extractedDir = `${process.env.SHARED_MOUNT_PATH}/extracted`;
+      const oldSubmissionPath = `${extractedDir}/${oldId}`;
+      const newSubmissionPath = `${extractedDir}/${newId}`;
+      const diffCommand = `git diff -a --diff-algorithm=minimal --no-index --no-color ${oldSubmissionPath} ${newSubmissionPath}`;
+
+      if (!existsSync(oldSubmissionPath)) {
+        res.status(404).json({ diff: "", error: `Failed to retrieve the old submission of ID #${oldId}.` });
+        return;
+      }
+      if (!existsSync(newSubmissionPath)) {
+        res.status(404).json({ diff: "", error: `Failed to retrieve the new submission of ID #${newId}.` });
+        return;
+      }
+
+      exec(diffCommand, (error, stdout) => {
+        // We check for `error.code !== 1` because `git diff` returns exit code 1 if there are differences.
+        if (error && error.code !== 1) {
+          res.status(500).json({ diff: "", error: JSON.stringify(error) });
+          return;
+        }
+
+        // We remove the parent directory paths in the output because the users do not need to know where the
+        // grader daemon stores the submissions.
+        const diffOutput = stdout.replace(new RegExp(`(${oldSubmissionPath}|${newSubmissionPath})`, "g"), "");
+        res.status(200).json({ diff: diffOutput, error: null });
+      });
     });
 
     /**
