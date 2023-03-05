@@ -165,8 +165,15 @@ const port = process.env.WEBHOOK_PORT || 4000;
       const headers = req.body.headers;
       const cookie = headers?.cookie ?? headers?.Cookie;
       if (typeof cookie !== "string") {
-        console.warn("[!] Cookie is not a string. Now logging in as ~teacher.")
-        itsc = "~teacher";
+        // Hot fix for deducing the ITSC to login based on the production URL
+        const referer: string | undefined = headers.Referer;
+        if (referer && referer.includes("zinc2023student")) {
+          console.warn("[!] Cookie is not a string. Now logging in as khheung.");
+          itsc = "khheung";
+        } else {
+          console.warn("[!] Cookie is not a string. Now logging in as ~teacher.");
+          itsc = "~teacher";
+        }
       } else {
         itsc = parse(cookie).itsc;
       }
