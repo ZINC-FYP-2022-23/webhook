@@ -1,4 +1,4 @@
-import { moveSync, readFileSync, outputFileSync, readdirSync, lstatSync, mkdirSync } from "fs-extra";
+import { moveSync, readdirSync, lstatSync, mkdirSync, existsSync } from "fs-extra";
 import { exec } from 'child_process';
 import httpClient from "../utils/http";
 import { GET_GRADING_POLICY, UPDATE_DECOMPRESSION_RESULT_FOR_SUBMISSION } from "../utils/queries";
@@ -8,6 +8,14 @@ const mountPath = process.env.SHARED_MOUNT_PATH || "/home/system/workspace";
 export async function decompressSubmission(submission: any) {
   try {
     console.log(`[!] Begins deflation process for submission archive #${submission.id} for file: ${submission.upload_name}`);
+
+    // Gracefully stops the decompression if submission is already extracted
+    const extractToPath = `${mountPath}/extracted/${submission.id}`
+    if (existsSync(extractToPath)) {
+      console.warn(`[!] Submission #${submission.id} of file ${submission.upload_name} has already been extracted to ${extractToPath}`);
+      return { previouslyExtracted: true };
+    }
+
     const fileExtension = submission.upload_name.slice(submission.upload_name.lastIndexOf('.')+1, submission.upload_name.length);
     switch(fileExtension) {
       case 'zip':
@@ -20,6 +28,7 @@ export async function decompressSubmission(submission: any) {
         throw new Error('Unsupported archive format')
     }
     await updateExtractedSubmissionEntry(submission.id, `extracted/${submission.id}`);
+    return { previouslyExtracted: false };
   } catch (error) {
     await updateExtractedSubmissionEntry(submission.id, null, error.message);
     console.error(`[✗] Submission: ${submission.id}`,error.message);

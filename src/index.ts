@@ -258,9 +258,15 @@ const port = process.env.WEBHOOK_PORT || 4000;
     server.post(`/trigger/decompression`, async (req, res) => {
       try {
         const { event: { data } } = req.body;
-        await decompressSubmission(data.new);
+        const { previouslyExtracted } = await decompressSubmission(data.new);
         const { gradeImmediately, isTest } = await getGradingPolicy(data.new.assignment_config_id, data.new.user_id);
         if (gradeImmediately) {
+          if (previouslyExtracted) {
+            console.log(`[!] Skipped grading for submission #${data.new.id} as it has been extracted before`);
+            res.json({ status: 'success' });
+            return;
+          }
+
           console.log(`[!] Triggered grader for submission id: ${data.new.id}`);
           const payload = JSON.stringify({
             submissions: [
