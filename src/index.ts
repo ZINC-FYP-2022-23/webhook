@@ -191,6 +191,70 @@ const port = process.env.WEBHOOK_PORT || 4000;
       res.json(payload);
     });
 
+    interface Submission {
+      assignment_config_id: number;
+      created_at: string;
+      id: number;
+      stored_name: string;
+      upload_name: string;
+      user_id: number;
+    }
+
+    /**
+     * Decompresses a submission and push a `gradingTask` job to Redis for the grader to process.
+     */
+    server.post(`/decompression`, async (req, res) => {
+      try {
+        const submission = req.body.submission as Submission;
+        /** 
+         * Optional explicit value for the `isTest` flag in the Redis payload of the grading task.
+         * 
+         * The Grader may behave differently when `isTest` flag is true. We allow the room to explicitly
+         * supply its value such that TAs can test the Grader's behavior under different values of `isTest`.
+         */
+        const isTestOverride = req.body.isTest as boolean | undefined;
+
+        const { previouslyExtracted } = await decompressSubmission(submission);
+        const { gradeImmediately, isTest } = await getGradingPolicy(submission.assignment_config_id, submission.user_id);
+        if (gradeImmediately) {
+          if (previouslyExtracted) {
+            console.log(`[!] Skipped grading for submission #${submission.id} as it has been extracted before`);
+            res.json({ status: 'success' });
+            return;
+          }
+
+          console.log(`[!] Triggered grader for submission id: ${submission.id}`);
+          const payload = JSON.stringify({
+            submissions: [
+              {
+                id: submission.id,
+                extracted_path: `extracted/${submission.id}`,
+                created_at: (new Date(submission.created_at)).toISOString(),
+              }
+            ],
+            assignment_config_id: submission.assignment_config_id,
+            isTest: isTestOverride ?? isTest,
+            initiatedBy: null,
+          });
+          const clients = await redis.rpush(`zinc_queue:grader`, JSON.stringify({
+            job: 'gradingTask',
+            payload,
+          }));
+          assert(clients !== 0, 'Job signal receiver assertion failed');
+        }
+        
+        res.json({
+          status: 'success',
+        });
+      } catch (error) {
+        console.error(`[✗] Error while processing /decompression: ${error.message}`);
+        res.status(500).json({
+          status: 'error',
+          error: error.message,
+        });
+      }
+    })
+
     /**
      * Compares two assignment submissions by running `git diff` on them.
      */
@@ -254,6 +318,11 @@ const port = process.env.WEBHOOK_PORT || 4000;
     /**
      * Decompresses the ZIP submission and push a `gradingTask` job to Redis for
      * the grader to process.
+     * 
+     * TODO: Deprecate this endpoint in favor of `/decompression`. The new `/decompression` endpoint is very similar
+     * to this endpoint, except the new endpoint can explicitly override the `isTest` flag in the Redis payload of the
+     * grading task. Being able to override `isTest` instead of computing it from {@link getGradingPolicy} is useful
+     * because the Grader may behave differently when `isTest` is true.
      */
     server.post(`/trigger/decompression`, async (req, res) => {
       try {
