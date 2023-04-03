@@ -165,14 +165,26 @@ const port = process.env.WEBHOOK_PORT || 4000;
       const headers = req.body.headers;
       const cookie = headers?.cookie ?? headers?.Cookie;
       if (typeof cookie !== "string") {
-        // Hot fix for deducing the ITSC to login based on the production URL
+        // Hot fix for deducing the ITSC to login based on the production/development URLs
+        const allowedURLs = {
+          student: [
+            'zinc2023student.ust.dev',
+            // Add own local dev URL
+          ],
+          admin: [
+            'zinc2023.ust.dev',
+            // Add own local dev URL
+          ],
+        };
         const referer: string | undefined = headers.Referer;
-        if (referer && referer.includes("zinc2023student")) {
+        if (referer && allowedURLs.student.some(url => referer.includes(url))) {
           console.warn("[!] Cookie is not a string. Now logging in as khheung.");
           itsc = "khheung";
-        } else {
+        } else if (referer && allowedURLs.admin.some(url => referer.includes(url))) {
           console.warn("[!] Cookie is not a string. Now logging in as ~teacher.");
           itsc = "~teacher";
+        } else {
+          res.status(403);
         }
       } else {
         itsc = parse(cookie).itsc;
