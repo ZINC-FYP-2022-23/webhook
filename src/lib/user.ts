@@ -91,7 +91,8 @@ export async function getUser(itsc: string, name: string): Promise<any> {
       console.log(`[!] User ${name} does not exist in Zinc, creating account for itsc ${itsc}`)
       await createUser(itsc, name);
       return {
-        isAdmin: false
+        isAdmin: false,
+        courses: [],
       };
     }
   }catch(error){
