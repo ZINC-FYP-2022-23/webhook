@@ -10,7 +10,7 @@ import * as dotenv from 'dotenv';
 import crypto from "crypto";
 import redis from "./utils/redis";
 import { existsSync } from "fs";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 // admin.initializeApp({
 //   credential: admin.credential.applicationDefault()
@@ -284,7 +284,6 @@ const port = process.env.WEBHOOK_PORT || 4000;
       const extractedDir = `${process.env.SHARED_MOUNT_PATH}/extracted`;
       const oldSubmissionPath = `${extractedDir}/${oldId}`;
       const newSubmissionPath = `${extractedDir}/${newId}`;
-      const diffCommand = `git diff -a --diff-algorithm=minimal --no-index --no-color ${oldSubmissionPath} ${newSubmissionPath}`;
 
       if (!existsSync(oldSubmissionPath)) {
         res.status(404).json({ diff: "", error: `Failed to retrieve the old submission of ID #${oldId}.` });
@@ -295,7 +294,17 @@ const port = process.env.WEBHOOK_PORT || 4000;
         return;
       }
 
-      exec(diffCommand, (error, stdout) => {
+      const diffCommandArgs = [
+        "diff",
+        "-a",
+        "--diff-algorithm=minimal",
+        "--no-index",
+        "--no-color",
+        oldSubmissionPath,
+        newSubmissionPath
+      ];
+
+      execFile("/usr/bin/git", diffCommandArgs, (error, stdout) => {
         // We check for `error.code !== 1` because `git diff` returns exit code 1 if there are differences.
         if (error && error.code !== 1) {
           res.status(500).json({ diff: "", error: JSON.stringify(error) });
